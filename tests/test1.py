@@ -5,20 +5,14 @@ from thr import Thr
 Space = Thr.Env("3n+1")
 
 @Space.append
-def hdl(t, spc, ID, num):
+def hdl(num):
     """3n+1_handle"""
     if num % 2 == 0:
-        # значения возвращать так
-        t.ret = True
-        spc.rets[ID] = num/2
-        return
-    # значения возвращать так
-    t.ret = True
-    spc.rets[ID] = 3*num+1
-    return
+        return num/2
+    return 3*num+1
 
 @Space.append
-def loop(t, spc, ID, num):
+def loop(num):
     """3n+1_mainloop"""
 
     steps = 0
@@ -27,10 +21,7 @@ def loop(t, spc, ID, num):
         num = hdl.getrun(num)
         steps += 1
         pass
-    # значения возвращать так
-    t.ret = True
-    spc.rets[ID] = steps
-    return
+    return steps
 
 print()
 print(Space)
