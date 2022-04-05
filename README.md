@@ -10,20 +10,14 @@ from thr import Thr
 Space = Thr.Env("3n+1")
 
 @Space.append
-def hdl(t, spc, ID, num):
+def hdl(num):
     """3n+1_handle"""
     if num % 2 == 0:
-        # значения возвращать так
-        t.ret = True
-        spc.rets[ID] = num/2
-        return
-    # значения возвращать так
-    t.ret = True
-    spc.rets[ID] = 3*num+1
-    return
+        return num/2
+    return 3*num+1
 
 @Space.append
-def loop(t, spc, ID, num):
+def loop(num):
     """3n+1_mainloop"""
 
     steps = 0
@@ -32,10 +26,7 @@ def loop(t, spc, ID, num):
         num = hdl.getrun(num)
         steps += 1
         pass
-    # значения возвращать так
-    t.ret = True
-    spc.rets[ID] = steps
-    return
+    return steps
 
 print()
 print(Space)
@@ -55,10 +46,11 @@ while not loop.ret:
 print(f"loop reached 4 -> 2 -> 1 trap,"
       f"time has passed (loop ticks): "
       f"{ticks}, steps has passed: {loop.get()}, start number: {num}")
+
 ```
 So,
 - for create threadspace do ```your_space = Thr.Env("name")```,
-- for create thread into threadspace:
-  - append decorator ```@your_space.append```
-  - append arguments ```t, spc, ID``` at start of arguments list
-- for return value from thread do ```t.ret = True; spc.rets[ID] = your_value; return```
+- for create thread into threadspace append decorator ```@your_space.append```
+
+# Note:
+returns in the threads in Thr.Env works as regular pythonic return
