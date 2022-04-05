@@ -1,7 +1,11 @@
 from curses.ascii import isalnum
+import re
 from threading import Thread as thrd
 from random import randrange
 from sys import exit as exitall
+from inspect import getsource as decompile
+from types import GeneratorType
+from typing import Any
 
 
 __all__ = ['Thr']
@@ -73,6 +77,12 @@ class Thr:
             ID = strcleanup(fn.__doc__.casefold())
             self.thrs += [ID]
             self.rets[ID] = None
+            _fn = fn
+            def fn(t, spc, ID, *args, **kwargs):
+                ret = _fn(*args, **kwargs)
+                t.ret = True
+                spc.rets[ID] = ret
+                pass
             #
             class Thrd(object):
                 ID = None
@@ -89,12 +99,12 @@ class Thr:
                     slf.runned = False
                     slf.ret = False
                     pass
-                def run(slf, *args):
+                def run(slf, *args, **kwargs):
                     if slf.runned:
                         print(f"Exception: Thread \"{slf.ID[:-3]}\" of threadspace \"{slf.space.name}\" already started")
                         exitall(1)
                         pass
-                    slf.thr = thrd(target = slf.fn, args = (slf, slf.space, slf.ID, *args,))
+                    slf.thr = thrd(target = slf.fn, args = (slf, slf.space, slf.ID, *args,), kwargs={**kwargs,})
                     slf.thr.start()
                     slf.runned = True
                     pass
@@ -127,4 +137,133 @@ class Thr:
             pass
         return thr
     pass
+#
+# LexToken class -
+# container for lexems (tokens)
+# useful for operations with
+# code syntax units
+class LexToken(object):
+    # Constructor
+    def __init__(self, typ, val, pos) -> None:
+        self.typ = typ
+        self.val = val
+        self.ps = pos
+
+    # to str (output for user)
+    def __str__(self) -> str:
+        return '{\n\ttype: '+self.typ+',\n\tvalue: \"'+self.val+'\",\n\tpos: '+str(self.ps)+'\n}'
+    
+    # repr (debug output, or for posthandle)
+    def __repr__(self) -> str:
+        return str('LexToken{'+self.type()+':\"'+self.value()+'\":'+str(self.ps)+'}').replace('\n', '\\n')
+    
+    # getitem - for make it iterable
+    def __getitem__(self, i) -> Any:
+        return [self.type, self.val][i]
+    
+    # setitem - for make it iterable
+    def __setitem__(self, i, value) -> None:
+        if i == 0:
+            self.typ = value
+            pass
+        elif i == 1:
+            self.val = value
+            pass
+        else:
+            raise IndexError('Sequence index out of range: ' + str(i))
+
+    # returns type of token
+    def type(self) -> str:
+        return self.typ
+    
+    # returns value of token
+    def value(self) -> str:
+        return self.val
+
+    # returns where this token was found
+    def pos(self) -> int:
+        return self.ps
+    pass
+
+# LexError class -
+# Exception for posthandle
+# catching, raises if syntax
+# error on lexing stage has
+# occured, usual fatal
+class LexError(Exception):
+    # Constructor
+    #
+    # Note:
+    #   typ - maybe "unexpected" or "missing"
+    def __init__(self, token, pos, typ='unexpected') -> None:
+        self.token = token
+        self.pos = pos
+        self.type = typ
+        pass
+    pass
+
+# Lex class -
+# Class for lexer constructing
+# uses RegExp for tokens detecting
+# universal, can be used anywhere
+class Lex(object):
+    # Constructor
+    #
+    # rules - sequence of pairs
+    # <typename, regexp>
+    def __init__(self, rules) -> None:
+        # init local variables
+        self.pos = None
+        self.buf = None
+        idx = 1
+        regex_parts = []
+        self.group_type = {}
+
+        # loop which generates one big regexp based on groups
+        for typ, regex in rules:
+            groupname = 'GROUP%s' % idx
+            regex_parts.append('(?P<%s>%s)' % (groupname, regex))
+            self.group_type[groupname] = typ
+            idx += 1
+
+        # catcantanate regexp`s
+        self.regex = re.compile('|'.join(regex_parts), re.DOTALL)
+
+    # method uses for input string to lex
+    def input(self, buf) -> None:
+        self.buf = buf
+        self.pos = 0
+
+    # generates once token per call
+    def token(self) -> LexToken | None:
+        # end of buf?
+        if self.pos >= len(self.buf):
+            return None
+        else:
+            # token detect
+            m = self.regex.match(self.buf, self.pos)
+            if m:
+                groupname = m.lastgroup
+                tok_type = self.group_type[groupname]
+                tok = LexToken(tok_type, m.group(groupname), self.pos)
+                self.pos = m.end()
+                return tok
+
+            # if we're here, no rule matched
+            raise LexError(LexToken('<unexpected>', self.buf[self.pos], self.pos), self.pos)
+
+    # method to generate multiple tokens per call
+    def tokens(self) -> GeneratorType:
+        while 1:
+            tok = self.token()
+            if tok is None: break
+            yield tok
+        return -1
+    pass
+
+PYRULES = [
+    ['ret', r'\s*return \s*(.*)'],
+    ['other', r'.*']
+]
+
 # конец файла
