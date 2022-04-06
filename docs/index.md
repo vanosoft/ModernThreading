@@ -63,5 +63,5 @@ For get thread return,
    ```bar = egg.get()```
 
 or use Thr.append.getrun
-method(wait for thread return and returns it):
+method(waits for thread return and returns it):
 ```bar = egg.getrun()```
