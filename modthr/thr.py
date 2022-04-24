@@ -133,7 +133,9 @@ class Thr:
     #  Декоратор для "голого" потока
     def thread(fn):
         def thr(*args, **kwargs):
-            thrd(target = fn, args = (*args,), kwargs={**kwargs,}).start()
+            T = thrd(target = fn, args = (*args,), kwargs={**kwargs,})
+            T.daemon = True
+            T.start()
             pass
         return thr
     pass
